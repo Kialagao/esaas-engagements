@@ -1,0 +1,21 @@
+master, development
+diff --git a/app/views/engagements/_index.html.haml b/app/views/engagements/_index.html.haml
+index daefa39..87482a4 100644
+--- a/app/views/engagements/_index.html.haml
++++ b/app/views/engagements/_index.html.haml
+@@ -26,8 +26,8 @@
+         %td= link_to image_tag('video.png', title: 'Screencast'), engagement.screencast_url, :target => '_blank'
+         %td= link_to image_tag('presentation.png', title: 'Presentation'), engagement.presentation_url, :target => '_blank'
+         %td
+-          = link_to('Edit', edit_app_engagement_path(app,engagement), :class => 'btn btn-primary')
+-          = link_to 'Destroy', app_engagement_path(app,engagement), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger'
+-          = link_to('CSV', export_path(app,engagement), :class => 'btn btn-info')
+           - if current_user&.coach?
++            = link_to('Edit', edit_app_engagement_path(app,engagement), :class => 'btn btn-primary')
++            = link_to 'Destroy', app_engagement_path(app,engagement), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger'
++            = link_to('CSV', export_path(app,engagement), :class => 'btn btn-info')
+             = link_to('Request Feedback', new_engagement_iteration_path(engagement), :class => 'btn btn-success pull-right')
+\ No newline at end of file
+
+--
+3	3	app/views/engagements/_index.html.haml

@@ -1,0 +1,353 @@
+master, development
+diff --git a/app/controllers/appeditrequests_controller.rb b/app/controllers/appeditrequests_controller.rb
+deleted file mode 100644
+index b94a085..0000000
+--- a/app/controllers/appeditrequests_controller.rb
++++ /dev/null
+@@ -1,41 +0,0 @@
+-class AppeditrequestsController < ApplicationController
+-  before_action :auth_user?
+-
+-  def index
+-    respond_to do |format|
+-      format.json { render :json => AppEditRequest.featured }
+-      format.html
+-    end
+-  end
+-
+-  def show
+-    @edit_request = AppEditRequest.find(params[:id])
+-    @app = App.find(@edit_request.app_id)
+-    @description_updated = @edit_request.description != @app.description
+-    @features_updated = @edit_request.features != @app.features
+-  end
+-
+-  def update
+-    edit_request = AppEditRequest.find(params[:id])
+-    app = App.find(edit_request.app_id)
+-    unless params[:feedback_given]
+-      app.description = edit_request.description
+-      app.features = edit_request.features
+-      app.save!
+-      edit_request.destroy
+-      redirect_to appeditrequests_path, alert: "Changes approved for #{app.name}"
+-    else
+-      new_request = edit_request.dup
+-      new_request.feedback = params[:feedback]
+-      new_request.status = :reviewed
+-      edit_request.destroy
+-      new_request.save
+-      redirect_to appeditrequests_path, alert: "Feedback submitted for #{app.name}"
+-    end
+-  end
+-
+-  def auth_user?
+-    User.find_by_id(session[:user_id])&.coach?
+-  end
+-
+-end
+diff --git a/app/controllers/apps_controller.rb b/app/controllers/apps_controller.rb
+index b91d4db..9b9f0ea 100644
+--- a/app/controllers/apps_controller.rb
++++ b/app/controllers/apps_controller.rb
+@@ -23,8 +23,6 @@ class AppsController < ApplicationController
+   # GET /apps/1.json
+   def show
+     @app_edit_request = ApplicationHelper.get_edit_request_for session[:user_id], params[:id]
+-    @current_engagement = App.find(params[:id]).engagements.order("created_at").first
+-    @iterations = @current_engagement.iterations
+   end
+ 
+   # GET /apps/new
+diff --git a/app/controllers/myprojects_controller.rb b/app/controllers/myprojects_controller.rb
+deleted file mode 100644
+index ce74404..0000000
+--- a/app/controllers/myprojects_controller.rb
++++ /dev/null
+@@ -1,98 +0,0 @@
+-class MyprojectsController < ApplicationController
+-    skip_before_filter :logged_in?, :only => :index
+-
+-    def index
+-        user = current_user
+-        orgs = Org.for_user(user.id)
+-        deploy_vet_map(orgs)
+-        total_app = @total_deploy + @total_vet
+-        page_default_and_update("myprojects", total_app)
+-        change_page_num("myprojects", total_app)
+-        @apps = App.for_orgs(orgs, limit=@each_page, offset=@each_page*(@page_num-1))
+-        @change_button_fields = @apps.map{|app| [app.id, change_button_text(app.id)]}.to_h
+-        respond_to do |format|
+-            format.json { render :json => @apps }
+-            format.html
+-        end
+-    end
+-
+-    # GET /myprojects/1
+-    def show
+-        @current_user = current_user
+-        @current_user_orgs = Org.for_user(@current_user.id)
+-        @current_user_apps = App.for_orgs(@current_user_orgs)
+-        @current_request = AppEditRequest.find_by_app_id(params[:id])
+-        # Check if the specified app exists, and if it does, set it to @app
+-        if App.exists?(params[:id])
+-            @app = App.find(params[:id])
+-            @comments = @app.comments
+-            @change_button_field = change_button_text(@app.id)
+-        else
+-            flash.alert = "You do not have any projects with ID :#{params[:id]}."
+-            redirect_to myprojects_path and return
+-        end
+-
+-        # Check if @app belongs to @current_user
+-        unless @current_user_apps.exists?(@app.id)
+-            flash.alert = "You do not have any projects with ID :#{params[:id]}."
+-            redirect_to myprojects_path
+-        end
+-        
+-    end
+-
+-    def edit
+-        @app = App.find(params[:id])
+-        edit_request = AppEditRequest.find_by_app_id(params[:id])
+-        unless (edit_request&.description).nil?
+-            @description = edit_request.description
+-        else
+-            @description = @app.description
+-        end
+-
+-        unless (edit_request&.features).nil?
+-            @features = edit_request.features
+-        else
+-            @features = @app.features
+-        end
+-    end
+-
+-    def update
+-        @request = AppEditRequest.where(app_id: params[:id])
+-        if @request.empty?
+-            AppEditRequest.create!(:description => params[:description], :features => params[:features], :app_id => params[:id], :requester_id => session[:user_id])
+-        end
+-        redirect_to myproject_path(params[:id])
+-	end
+-
+-    def deploy_vet_map(orgs=nil)
+-        status_map = App.status_count_for_orgs(orgs)
+-        @deployment_map = {}
+-        @vetting_map = {}
+-        @total_deploy = 0
+-        @total_vet = 0
+-        status_map.each do |status, count|
+-            status_str = App.statuses.keys[status]
+-            if App.getAllVettingStatuses.include? status_str.to_sym
+-                @vetting_map[status_str] = count
+-                @total_vet += count
+-            else
+-                @deployment_map[status_str] = count
+-                @total_deploy += count
+-            end
+-        end
+-    end
+-
+-    def change_button_text(app_id)
+-        app = App.find(app_id)
+-        request = AppEditRequest.where(app_id: app_id)
+-        if !request.empty?
+-            return "Update Request"
+-        #TODO: enum for app model is not working correctly
+-        elsif "#{app.status}" == "dead"
+-            return "Request New Feature"
+-        else
+-            return "Request Change"
+-        end
+-    end
+-
+-end
+diff --git a/app/views/appeditrequests/index.html.haml b/app/views/appeditrequests/index.html.haml
+deleted file mode 100644
+index 0c4b940..0000000
+--- a/app/views/appeditrequests/index.html.haml
++++ /dev/null
+@@ -1,22 +0,0 @@
+-.page-header
+-  %h1
+-    Listing Requests
+-
+-%table.table.table-condensed#apps_table
+-  %thead
+-    %tr
+-      %th Project Name
+-      %th Name
+-      %th Created Time
+-      %th Details
+-  %tbody
+-    - AppEditRequest.featured.each do |request|
+-      %tr
+-        %td
+-          = request.app_name
+-        %td
+-          = request.requester_name
+-        %td
+-          = request.created_at
+-        %td
+-          = link_to "Review", appeditrequest_path(request.id), :class => 'btn btn-primary'
+\ No newline at end of file
+diff --git a/app/views/appeditrequests/show.html.haml b/app/views/appeditrequests/show.html.haml
+deleted file mode 100644
+index d4015ec..0000000
+--- a/app/views/appeditrequests/show.html.haml
++++ /dev/null
+@@ -1,41 +0,0 @@
+-.page-header
+-  %h1 Request Change for  App "#{App.find(@app.id).name}"
+-
+-= form_for @app, :url => appeditrequest_path(@edit_request.id), :method => :put do
+-  .well#status
+-    %h4 Status: #{@app.status.humanize(capitalize: false)}  
+-  .well#description
+-    %h4 Current Description
+-    = sanitize @app.description
+-    - if @description_updated
+-      .text-success
+-        %h4 Updated Description
+-        = sanitize @edit_request.description
+-  .well#features
+-    %h4 Current App Initial Features
+-    = sanitize @app.features
+-    - if @features_updated
+-      .text-success
+-        %h4 updated features
+-        = sanitize @edit_request.features
+-  .row
+-    .col-xs-4.col-sm-4.col-md-4.col-lg-4
+-      .well#deployment
+-        %h4 Deployment
+-        %p{:style => "word-wrap: break-word;"}
+-          = link_to @app.deployment_url, @app.deployment_url
+-    .col-xs-4.col-sm-4.col-md-4.col-lg-4
+-      .well#github
+-        %h4 Github
+-        %p{:style => "word-wrap: break-word;"}
+-          = link_to @app.repository_url, @app.repository_url
+-    .col-xs-4.col-sm-4.col-md-4.col-lg-4
+-      .well#pivotal
+-        %h4 Pivotal Tracker
+-        %p{:style => "word-wrap: break-word;"}
+-          = link_to @app.pivotal_tracker_url, @app.pivotal_tracker_url
+-  .well#feedback
+-    %h4 Feedback
+-    = text_area_tag :feedback, @edit_request.feedback, size: "24x6"
+-  = submit_tag 'Approve Change Request', :class => 'btn btn-primary'
+-  = submit_tag 'Send Feedback', :class => 'btn btn-primary', name: 'feedback_given'
+\ No newline at end of file
+diff --git a/app/views/engagements/_index.html.haml b/app/views/engagements/_index.html.haml
+index 00bdbff..daefa39 100644
+--- a/app/views/engagements/_index.html.haml
++++ b/app/views/engagements/_index.html.haml
+@@ -29,4 +29,5 @@
+           = link_to('Edit', edit_app_engagement_path(app,engagement), :class => 'btn btn-primary')
+           = link_to 'Destroy', app_engagement_path(app,engagement), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger'
+           = link_to('CSV', export_path(app,engagement), :class => 'btn btn-info')
+-          = link_to('Request Feedback', new_engagement_iteration_path(engagement), :class => 'btn btn-success pull-right')
+\ No newline at end of file
++          - if current_user&.coach?
++            = link_to('Request Feedback', new_engagement_iteration_path(engagement), :class => 'btn btn-success pull-right')
+\ No newline at end of file
+diff --git a/app/views/myprojects/edit.html.haml b/app/views/myprojects/edit.html.haml
+deleted file mode 100644
+index a670d81..0000000
+--- a/app/views/myprojects/edit.html.haml
++++ /dev/null
+@@ -1,35 +0,0 @@
+-.page-header
+-  %h1 Request Changes for "#{@app.name}"
+-
+-%div.text-center.alert{class: "alert#{@banner_class}", role: 'alert'}
+-  = @banner_message
+-
+-- unless @app_edit_request.feedback.nil?
+-  %hr
+-  .well
+-    %h3 Staff Feedback on Request:
+-    =sanitize @app_edit_request.feedback
+-    .clearfix
+-      .pull-right
+-        Feedback By:
+-        =link_to @app_edit_request.approver.name, @app_edit_request.approver
+-  %hr
+-=form_tag({action: :update} , method: :put) do
+-  =render 'form'
+-  =submit_tag 'Update Request', :class => 'btn btn-primary'
+-
+-.panel.panel-default{style: 'margin: 15px 0;'}
+-  .panel-heading.text-left
+-    List of staff you can contact
+-  .panel-body
+-    %table.table.table-hover.table-bordered#staff_list
+-      - @staff_list.each do |staff|
+-        %tr
+-          %td
+-            = staff.name
+-          %td
+-            = staff.email
+-
+--#TODO: use modal to confirm delete
+-=form_tag(delete_my_project_edit_path(app_id: @app.id), method: :delete) do
+-  =submit_tag 'Delete Request', class: 'btn btn-danger pull-left'
+\ No newline at end of file
+diff --git a/app/views/myprojects/show.html.haml b/app/views/myprojects/show.html.haml
+deleted file mode 100644
+index 83415bd..0000000
+--- a/app/views/myprojects/show.html.haml
++++ /dev/null
+@@ -1,39 +0,0 @@
+-- if @current_request
+-  .alert.alert-info.text-center
+-    %h5 Request for Project #{@app.name} has been #{@current_request.status}
+-.page-header
+-  %h1
+-    = @app.name
+-    = image_tag('octocat.png')
+-    - unless (url = @app.code_climate_url).blank?
+-      = link_to image_tag(url + '/badges/gpa.svg'), url, :target => '_blank'
+-      = link_to image_tag(url + '/badges/coverage.svg'), url, :target => '_blank'
+-    =link_to  @change_button_field, edit_myproject_path(@app.id), :class => 'btn btn-primary pull-right'
+-    -#= link_to 'Edit App', edit_app_path(@app), class: 'btn btn-primary pull-right btn-space'
+-.well#status
+-  %h4 Status: #{@app.status.humanize(capitalize: false)}
+-.well#description
+-  %h4 Description
+-  = sanitize @app.description
+-.well#features
+-  %h4 App Initial Features
+-  = sanitize @app.features
+-.row
+-  .col-xs-4.col-sm-4.col-md-4.col-lg-4
+-    .well#deployment
+-      %h4 Deployment
+-      %p{:style => "word-wrap: break-word;"}
+-        = link_to @app.deployment_url, @app.deployment_url
+-  .col-xs-4.col-sm-4.col-md-4.col-lg-4
+-    .well#github
+-      %h4 Github
+-      %p{:style => "word-wrap: break-word;"}
+-        = link_to @app.repository_url, @app.repository_url
+-  .col-xs-4.col-sm-4.col-md-4.col-lg-4
+-    .well#pivotal
+-      %h4 Pivotal Tracker
+-      %p{:style => "word-wrap: break-word;"}
+-        = link_to @app.pivotal_tracker_url, @app.pivotal_tracker_url
+-%h3
+-  -# Dummy button => need to be implemented in later iteration
+-  = link_to 'Back to My Projects', myprojects_path, class: 'btn btn-primary pull-left'
+\ No newline at end of file
+
+--
+0	41	app/controllers/appeditrequests_controller.rb
+0	2	app/controllers/apps_controller.rb
+0	98	app/controllers/myprojects_controller.rb
+0	22	app/views/appeditrequests/index.html.haml
+0	41	app/views/appeditrequests/show.html.haml
+2	1	app/views/engagements/_index.html.haml
+0	35	app/views/myprojects/edit.html.haml
+0	39	app/views/myprojects/show.html.haml

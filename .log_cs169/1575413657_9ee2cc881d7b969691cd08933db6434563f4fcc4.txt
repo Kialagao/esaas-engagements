@@ -1,0 +1,34 @@
+master, development
+diff --cc app/views/apps/show.html.haml
+index 3b0ea62,b6deedb..0000000
+--- a/app/views/apps/show.html.haml
++++ b/app/views/apps/show.html.haml
+@@@ -8,7 -8,6 +8,10 @@@
+          %h5
+            A staff has requested feedback for Iteration #{iter.number}.
+            = link_to "Complete Feedback Form", edit_engagement_iteration_path(@current_engagement.id, iter.id), :class => 'btn btn-primary pull-right'
+++<<<<<<< HEAD
+ +
+++=======
+++>>>>>>> 78ab62cb54bbbc503d265ecfb4005cc57bce7987
+  .page-header
+    %h1
+      = link_to_unless @app.deployment_url.blank?, @app.name, @app.deployment_url, :target => '_blank'
+diff --git a/app/views/engagements/_index.html.haml b/app/views/engagements/_index.html.haml
+index daefa39..00bdbff 100644
+--- a/app/views/engagements/_index.html.haml
++++ b/app/views/engagements/_index.html.haml
+@@ -29,5 +29,4 @@
+           = link_to('Edit', edit_app_engagement_path(app,engagement), :class => 'btn btn-primary')
+           = link_to 'Destroy', app_engagement_path(app,engagement), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger'
+           = link_to('CSV', export_path(app,engagement), :class => 'btn btn-info')
+-          - if current_user&.coach?
+-            = link_to('Request Feedback', new_engagement_iteration_path(engagement), :class => 'btn btn-success pull-right')
+\ No newline at end of file
++          = link_to('Request Feedback', new_engagement_iteration_path(engagement), :class => 'btn btn-success pull-right')
+\ No newline at end of file
+
+--
+0	0	app/views/apps/show.html.haml
+3	0	app/views/apps/show.html.haml
+1	2	app/views/engagements/_index.html.haml

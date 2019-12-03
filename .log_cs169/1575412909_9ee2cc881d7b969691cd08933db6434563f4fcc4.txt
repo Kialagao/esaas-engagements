@@ -1,0 +1,17 @@
+master, development
+diff --git a/app/views/engagements/_index.html.haml b/app/views/engagements/_index.html.haml
+index daefa39..fde6b52 100644
+--- a/app/views/engagements/_index.html.haml
++++ b/app/views/engagements/_index.html.haml
+@@ -29,5 +29,4 @@
+           = link_to('Edit', edit_app_engagement_path(app,engagement), :class => 'btn btn-primary')
+           = link_to 'Destroy', app_engagement_path(app,engagement), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger'
+           = link_to('CSV', export_path(app,engagement), :class => 'btn btn-info')
+-          - if current_user&.coach?
+-            = link_to('Request Feedback', new_engagement_iteration_path(engagement), :class => 'btn btn-success pull-right')
+\ No newline at end of file
++          = link_to('Request Feedback', new_engagement_iteration_path(engagement), :class => 'btn btn-success pull-right') - if current_user&.coach?
+\ No newline at end of file
+
+--
+1	2	app/views/engagements/_index.html.haml
