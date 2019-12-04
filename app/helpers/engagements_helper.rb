@@ -6,8 +6,8 @@ module EngagementsHelper
     end
     if (org = engagement.coaching_org.try(:name))
       descr << " (#{org}"
+      descr << ")"
     end
-    descr << ")"
     descr
   end
 end

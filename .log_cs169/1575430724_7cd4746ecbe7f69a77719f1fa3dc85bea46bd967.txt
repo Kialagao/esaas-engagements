@@ -1,0 +1,18 @@
+master, development
+diff --git a/app/helpers/engagements_helper.rb b/app/helpers/engagements_helper.rb
+index 58e223b..413cef3 100644
+--- a/app/helpers/engagements_helper.rb
++++ b/app/helpers/engagements_helper.rb
+@@ -6,8 +6,8 @@ module EngagementsHelper
+     end
+     if (org = engagement.coaching_org.try(:name))
+       descr << " (#{org}"
++      descr << ")"
+     end
+-    descr << ")"
+     descr
+   end
+ end
+
+--
+1	1	app/helpers/engagements_helper.rb
